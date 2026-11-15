@@ -65,7 +65,7 @@ window.google = {script: {run: (function () {
   function R(s, f) { this.s = s; this.f = f; }
   R.prototype.withSuccessHandler = function (s) { return new R(s, this.f); };
   R.prototype.withFailureHandler = function (f) { return new R(this.s, f); };
-  ['getData', 'getMedia', 'answer'].forEach(function (n) {
+  ['getData', 'getMedia', 'answer', 'skipItem'].forEach(function (n) {
     R.prototype[n] = function () {
       var s = this.s, f = this.f, args = [].slice.call(arguments);
       fetch(EXEC, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({fn: n, args: args})})
@@ -106,9 +106,16 @@ function show() {
     m.innerHTML = '<div class="card empty">Nothing to vet.' + (data.items.length ? '<br><br><button onclick="i=0;show()">Start again</button>' : '') + '</div>';
     return;
   }
-  var x = data.items[i], inv = x.KIND === 'INVOICE';
+  var x = data.items[i], inv = x.KIND === 'INVOICE', filed = x.KIND === 'FILED', chk = x.KIND === 'CHECK';
   var opts = '<option value="">(no change)</option>' + data.accounts.map(function (a) {
     return '<option' + (a === x.ACCOUNT ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('');
+  if (chk) {
+    m.innerHTML = '<div class="card"><span class="kind">CHECK</span><span class="count">' + (i + 1) + ' of ' + data.items.length + '</span>' +
+      '<div class="who">' + esc(x.PAYEE) + '</div><div class="when">Daily check · ' + esc(x.DATE) + ' ' + esc(x.TIME) + '</div>' +
+      '<div class="detail" style="white-space:pre-wrap">' + esc(x.DETAIL) + '</div>' +
+      '<div class="buttons"><button onclick="skip()">Skip</button><button class="primary" onclick="save(true)">Approve</button></div></div>';
+    return;
+  }
   m.innerHTML =
     '<div class="card">' +
     '<span class="kind">' + esc(x.KIND) + '</span><span class="count">' + (i + 1) + ' of ' + data.items.length + '</span>' +
@@ -123,14 +130,16 @@ function show() {
     '</div>' +
     (x.DETAIL ? '<div class="detail">' + esc(x.DETAIL) + '</div>' : '') +
     '<div id="media" class="media">' + ((x['SLIP FILE'] || x.EMAIL) ? '<div class="loading">Loading the slip / email…</div>' : '') + '</div>' +
-    (inv ? '' :
+    (inv ? '' : filed ?
+      '<label>Account (change it before Approve to move it)</label><select id="account">' + opts + '</select>' :
       '<label>Account</label><select id="account">' + opts + '</select>' +
       '<div class="check"><input type="checkbox" id="always"><span>Always this account for this payee</span></div>' +
       '<label>Name for this payee (AKA)</label><input type="text" id="aka" placeholder="' + esc(x.AKA) + '">' +
       '<label>Description</label><input type="text" id="description" placeholder="what it was for">') +
-    '<label>Comment for Claude</label><textarea id="comment"></textarea>' +
+    (filed ? '' : '<label>Comment for Claude</label><textarea id="comment"></textarea>') +
     '<div class="buttons"><button onclick="skip()">Skip</button>' +
-    (inv ? '<button class="primary" onclick="save(true)">Done</button>' : '<button class="primary" onclick="save(false)">Save</button>') +
+    (inv ? '<button class="primary" onclick="save(true)">Done</button>' : filed ? '<button class="primary" onclick="save(true)">Approve</button>' :
+     '<button class="primary" onclick="save(false)">Save</button>') +
     '</div></div>';
   if (x['SLIP FILE'] || x.EMAIL) {
     google.script.run.withSuccessHandler(function (r) {
@@ -145,18 +154,33 @@ function show() {
   }
 }
 
-function skip() { i++; show(); window.scrollTo(0, 0); }
+// Skip: the item goes to the end of the list (here at once, and in the sheet for next time)
+var skipped = 0;  // skips in a row: once every item has been skipped, say so instead of going round
+function skip() {
+  var x = data.items.splice(i, 1)[0];
+  data.items.push(x);
+  skipped++;
+  google.script.run.withFailureHandler(function () {}).skipItem(K, x.KEY);
+  window.scrollTo(0, 0);
+  if (skipped >= data.items.length) {
+    document.getElementById('main').innerHTML = '<div class="card empty">You skipped all ' + data.items.length +
+      ' item(s); they wait for later.<br><br><button onclick="skipped=0;i=0;show()">Show them again</button></div>';
+    return;
+  }
+  show();
+}
 
 function save(done) {
   var x = data.items[i], g = function (id) { var e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value.trim()) : ''; };
   var a = {account: g('account'), always: g('always'), aka: g('aka'), description: g('description'), comment: g('comment'), done: done};
+  if (x.KIND === 'FILED' && a.account === x.ACCOUNT) a.account = '';  // unchanged: nothing to write
   if (a.always && !a.account && !x.ACCOUNT) { alert('Pick the account first.'); return; }
   if (a.always && !a.account) a.account = x.ACCOUNT;
   if (!done && !a.account && !a.aka && !a.description && !a.comment) { skip(); return; }
   var b = document.querySelectorAll('button'); b.forEach(function (e) { e.disabled = true; });
   google.script.run.withSuccessHandler(function () {
-      data.items.splice(i, 1); show(); window.scrollTo(0, 0);
-      var t = document.getElementById('toast'); t.textContent = done ? 'Done ✓ saved' : 'Saved ✓'; t.hidden = false;
+      data.items.splice(i, 1); skipped = 0; show(); window.scrollTo(0, 0);
+      var t = document.getElementById('toast'); t.textContent = x.KIND === 'FILED' || x.KIND === 'CHECK' ? 'Approved ✓' : done ? 'Done ✓ saved' : 'Saved ✓'; t.hidden = false;
       setTimeout(function () { t.hidden = true; }, 2200);
     })
     .withFailureHandler(function (e) { alert(e.message); b.forEach(function (e2) { e2.disabled = false; }); })
