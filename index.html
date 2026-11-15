@@ -6,57 +6,71 @@
 <meta charset="utf-8">
 <style>
   :root { --bg:#f4f6fa; --card:#fff; --ink:#1d2433; --muted:#6b7385; --line:#ccd3e0; --navy:#21345a; --accent:#2f6fde;
-          --warn:#b3261e; --chip:#e8edf7; }
+          --warn:#b3261e; --chip:#e8edf7; --ok:#1e7a46; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#12151c; --card:#1b2029; --ink:#e7eaf1; --muted:#9aa3b5; --line:#2f3745; --navy:#8fb0ff; --accent:#7aa5ff;
-            --warn:#ff8a80; --chip:#252c3a; }
+            --warn:#ff8a80; --chip:#252c3a; --ok:#58b884; }
   }
   * { box-sizing:border-box; }
   html, body { overflow-x:hidden; }
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 Roboto, -apple-system, "Segoe UI", sans-serif; }
-  header { padding:14px 16px 6px; }
+  header { padding:14px 16px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   h1 { margin:0; font-size:20px; color:var(--navy); }
   .status { font-size:13px; color:var(--muted); margin-top:4px; }
   .status.bad { color:var(--warn); }
-  main { padding:8px 16px 32px; }
-  .card { overflow:hidden; overflow-wrap:anywhere; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-  .kind { display:inline-block; font-size:12px; font-weight:700; letter-spacing:.04em; padding:3px 8px; border-radius:6px;
-          background:var(--chip); color:var(--navy); }
-  .count { float:right; font-size:13px; color:var(--muted); }
+  main { padding:8px 16px 32px; max-width:560px; }
+  .card { overflow:hidden; overflow-wrap:anywhere; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .count { float:right; font-size:13px; color:var(--muted); margin-left:8px; }
+  .why { display:inline-block; font-size:13px; padding:3px 8px; border-radius:6px; background:var(--chip); color:var(--navy); }
+  .why.need { color:var(--warn); }
   .amount { font-size:28px; font-weight:700; margin:10px 0 2px; }
   .when { color:var(--muted); font-size:14px; }
-  .who { font-size:18px; font-weight:600; margin-top:8px; }
-  .row { display:flex; justify-content:space-between; gap:12px; font-size:14px; padding:6px 0; border-top:1px solid var(--line); }
-  .row span:first-child { color:var(--muted); }
-  .row span:first-child { flex:none; }
-  .row span:last-child { text-align:right; min-width:0; overflow-wrap:anywhere; }
-  .detail { background:var(--chip); border-radius:8px; padding:10px; font-size:14px; margin-top:10px; }
-  .media img { width:100%; border-radius:8px; margin-top:12px; border:1px solid var(--line); }
-  .email { margin-top:12px; border:1px solid var(--line); border-radius:8px; padding:10px; font-size:13px; }
-  .email pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; font-size:13px; line-height:1.35; margin:8px 0 0; max-height:260px; overflow:auto; }
+  .printed { color:var(--muted); font-size:13px; margin-top:3px; }
+  .note { font-size:14px; margin-top:6px; }
   label { display:block; font-size:13px; color:var(--muted); margin:12px 0 4px; }
-  select, input[type=text], textarea { width:100%; max-width:100%; font-family:inherit; font-size:16px; padding:10px; border:1px solid var(--line);
-          border-radius:8px; background:var(--card); color:var(--ink); }
-  textarea { min-height:60px; }
-  .check { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:15px; }
-  .check input { width:22px; height:22px; }
+  select, input[type=text], input[type=date], input[type=number] { width:100%; max-width:100%; font-family:inherit; font-size:16px; padding:10px;
+          border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  select.empty { border-color:var(--warn); }
+  .check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:15px; }
+  .check input { width:20px; height:20px; }
+  .row2 { display:flex; gap:10px; margin-top:14px; }
+  .row2 button { font-size:15px; padding:10px; font-weight:500; }
+  .seg { display:flex; gap:6px; margin-top:6px; }
+  .seg button { font-size:14px; padding:9px 4px; font-weight:500; }
+  .seg button.on { background:var(--chip); border-color:var(--navy); color:var(--navy); font-weight:700; }
+  .inv { margin-top:14px; padding:10px; border-radius:8px; background:var(--chip); font-size:14px; }
+  .added { font-size:13px; color:var(--ok); margin-top:6px; }
   .buttons { display:flex; gap:10px; margin-top:16px; }
   button { flex:1; font-family:inherit; font-size:16px; font-weight:600; padding:13px; border-radius:10px; border:1px solid var(--line);
            background:var(--card); color:var(--ink); }
   button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .empty { text-align:center; color:var(--muted); padding:40px 0; }
-  .loading { color:var(--muted); font-size:14px; margin-top:12px; }
-  .toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%);
+  button.cashin { flex:none; padding:9px 14px; font-size:15px; background:var(--ok); border-color:var(--ok); color:#fff; }
+  button:disabled { opacity:.5; }
+  .list .li { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; }
+  .list .li div { flex:1; min-width:0; }
+  .list small { color:var(--muted); display:block; }
+  .list button { flex:none; font-size:13px; padding:7px 10px; }
+  .empty { text-align:center; color:var(--muted); padding:28px 0; }
+  .viewer { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:10; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .viewer .bar { position:sticky; top:0; display:flex; justify-content:flex-end; padding:10px; }
+  .viewer .bar button { flex:none; padding:8px 14px; }
+  .viewer img { display:block; width:100%; height:auto; }
+  .viewer .mail { background:var(--card); color:var(--ink); margin:0 10px 20px; border-radius:10px; padding:14px; font-size:14px; }
+  .viewer pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; margin:8px 0 0; }
+  .viewer .msg { color:#fff; padding:20px; }
+  .toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); z-index:20;
            background:var(--navy); color:var(--card); padding:10px 18px; border-radius:20px; font-weight:600; font-size:15px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Expenses</h1>
-  <div id="status" class="status">Loading…</div>
+  <div><h1>Expenses</h1><div id="status" class="status">Loading…</div></div>
+  <button class="cashin" onclick="cashForm()">+ CASH IN</button>
 </header>
 <main id="main"></main>
-<div id="toast" class="toast" hidden>Saved ✓</div>
+<div id="viewer" class="viewer" hidden></div>
+<input type="file" id="picker" accept="image/*,application/pdf" hidden>
+<div id="toast" class="toast" hidden></div>
 <script>
 // GitHub Pages copy of the app (Jay 15 Nov 2026: phones signed into several Google accounts cannot open
 // script.google.com pages). Same page; its google.script.run calls go to the script's JSON API instead.
@@ -65,7 +79,7 @@ window.google = {script: {run: (function () {
   function R(s, f) { this.s = s; this.f = f; }
   R.prototype.withSuccessHandler = function (s) { return new R(s, this.f); };
   R.prototype.withFailureHandler = function (f) { return new R(this.s, f); };
-  ['getData', 'getMedia', 'answer', 'skipItem'].forEach(function (n) {
+  ['getData', 'getMedia', 'answer', 'skipItem', 'uploadFile', 'laterAnswer', 'closeLater', 'cashIn'].forEach(function (n) {
     R.prototype[n] = function () {
       var s = this.s, f = this.f, args = [].slice.call(arguments);
       fetch(EXEC, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({fn: n, args: args})})
@@ -80,82 +94,77 @@ window.google = {script: {run: (function () {
 <script>
 var data = null, i = 0, K = (function () { var m = location.hash.match(/k=([^&]+)/); if (m) { try { localStorage.setItem('k', m[1]); } catch (e) {} return m[1]; } try { return localStorage.getItem('k') || ''; } catch (e) { return ''; } })();
 function esc(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function $(id) { return document.getElementById(id); }
+function toast(s) { var t = $('toast'); t.textContent = s; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(function () { t.hidden = true; }, 2200); }
+function busy(on) { document.querySelectorAll('main button').forEach(function (b) { b.disabled = on; }); }
+function call(fn, args, ok) {
+  var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { busy(false); alert(e.message); });
+  r[fn].apply(r, [K].concat(args));
+}
 
 function load() {
   google.script.run.withSuccessHandler(function (d) { data = d; i = 0; showStatus(); show(); })
-    .withFailureHandler(function (e) { document.getElementById('main').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; })
+    .withFailureHandler(function (e) { $('main').innerHTML = '<div class="card empty">' + esc(e.message) + '</div>'; })
     .getData(K);
 }
 
 function showStatus() {
-  var s = data.status, el = document.getElementById('status'), bits = [], bad = false;
+  var s = data.status, el = $('status'), bits = [], bad = false;
   if (s['LAST RUN END']) bits.push('Last run ' + s['LAST RUN END'].replace('T', ' ').slice(5) + (s['LAST RUN OK'] === 'NO' ? ' (with failures)' : ''));
   if (s['LAST RUN OK'] === 'NO') bad = true;
   if (s['SIGN-IN EXPIRES']) {
     var left = (new Date(s['SIGN-IN EXPIRES'] + ':00+07:00') - new Date()) / 86400000;
-    bits.push(left < 0 ? 'Sign-in EXPIRED: run python -m importer.auth on the PC' : 'sign-in valid ' + Math.floor(left) + ' more day(s)');
+    bits.push(left < 0 ? 'PC sign-in EXPIRED: python -m importer.auth' : 'sign-in ' + Math.floor(left) + ' more day(s)');
     if (left < 1.5) bad = true;
   }
   el.textContent = bits.join(' · ');
   el.className = 'status' + (bad ? ' bad' : '');
 }
 
+// ---------- the list ----------
 function show() {
-  var m = document.getElementById('main');
+  var m = $('main'), h = laterCard();
   if (!data.items.length || i >= data.items.length) {
-    m.innerHTML = '<div class="card empty">Nothing to vet.' + (data.items.length ? '<br><br><button onclick="i=0;show()">Start again</button>' : '') + '</div>';
+    m.innerHTML = h + '<div class="card empty">Nothing to look at.' +
+      (data.items.length ? '<br><br><button onclick="skipped=0;i=0;show()">Show the skipped ones again</button>' : '') + '</div>';
     return;
   }
-  var x = data.items[i], inv = x.KIND === 'INVOICE', filed = x.KIND === 'FILED', chk = x.KIND === 'CHECK';
-  var opts = '<option value="">(no change)</option>' + data.accounts.map(function (a) {
+  var x = data.items[i], noAcc = !x.ACCOUNT;
+  x._files = x._files || 0;
+  var opts = (noAcc ? '<option value="">choose…</option>' : '') + data.accounts.concat(
+      x.ACCOUNT && data.accounts.indexOf(x.ACCOUNT) < 0 ? [x.ACCOUNT] : []).map(function (a) {
     return '<option' + (a === x.ACCOUNT ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('');
-  if (chk) {
-    m.innerHTML = '<div class="card"><span class="kind">CHECK</span><span class="count">' + (i + 1) + ' of ' + data.items.length + '</span>' +
-      '<div class="who">' + esc(x.PAYEE) + '</div><div class="when">Daily check · ' + esc(x.DATE) + ' ' + esc(x.TIME) + '</div>' +
-      '<div class="detail" style="white-space:pre-wrap">' + esc(x.DETAIL) + '</div>' +
-      '<div class="buttons"><button onclick="skip()">Skip</button><button class="primary" onclick="save(true)">Approve</button></div></div>';
-    return;
-  }
-  m.innerHTML =
+  var src = x['SLIP FILE'] ? 'See slip' : x.EMAIL ? 'See email' : '';
+  m.innerHTML = h +
     '<div class="card">' +
-    '<span class="kind">' + esc(x.KIND) + '</span><span class="count">' + (i + 1) + ' of ' + data.items.length + '</span>' +
+    '<span class="why' + (noAcc ? ' need' : '') + '">' + esc(x.WHY) + '</span><span class="count">' + (i + 1) + ' of ' + data.items.length + '</span>' +
     '<div class="amount">' + esc(x.AMOUNT) + ' THB</div>' +
     '<div class="when">' + esc(x.DATE) + (x.TIME ? ' · ' + esc(x.TIME) : '') + ' · ' + esc(x.BANK) + '</div>' +
-    '<div class="who">' + esc(x.AKA || x.PAYEE) + '</div>' +
-    (x.AKA && x.AKA !== x.PAYEE ? '<div class="when">' + esc(x.PAYEE) + '</div>' : '') +
-    '<div style="margin-top:10px">' +
-      '<div class="row"><span>Note</span><span>' + (esc(x.NOTE) || '–') + '</span></div>' +
-      '<div class="row"><span>Account</span><span>' + (esc(x.ACCOUNT) || '–') + '</span></div>' +
-      '<div class="row"><span>Documents</span><span>' + (esc(x.DOCUMENTS) || '–') + '</span></div>' +
-    '</div>' +
-    (x.DETAIL ? '<div class="detail">' + esc(x.DETAIL) + '</div>' : '') +
-    '<div id="media" class="media">' + ((x['SLIP FILE'] || x.EMAIL) ? '<div class="loading">Loading the slip / email…</div>' : '') + '</div>' +
-    (inv ? '' : filed ?
-      '<label>Account (change it before Approve to move it)</label><select id="account">' + opts + '</select>' :
-      '<label>Account</label><select id="account">' + opts + '</select>' +
-      '<div class="check"><input type="checkbox" id="always"><span>Always this account for this payee</span></div>' +
-      '<label>Name for this payee (AKA)</label><input type="text" id="aka" placeholder="' + esc(x.AKA) + '">' +
-      '<label>Description</label><input type="text" id="description" placeholder="what it was for">') +
-    (filed ? '' : '<label>Comment for Claude</label><textarea id="comment"></textarea>') +
-    '<div class="buttons"><button onclick="skip()">Skip</button>' +
-    (inv ? '<button class="primary" onclick="save(true)">Done</button>' : filed ? '<button class="primary" onclick="save(true)">Approve</button>' :
-     '<button class="primary" onclick="save(false)">Save</button>') +
-    '</div></div>';
-  if (x['SLIP FILE'] || x.EMAIL) {
-    google.script.run.withSuccessHandler(function (r) {
-      if (data.items[i] !== x) return;
-      var h = '';
-      if (r.image) h += '<a href="' + esc(r.fileUrl) + '"><img src="' + r.image + '"></a>';
-      if (r.email) h += '<div class="email"><b>' + esc(r.email.subject) + '</b><br>' + esc(r.email.from) + ' · ' + esc(r.email.date) +
-                        '<pre>' + esc(r.email.body) + '</pre></div>';
-      if (r.error && !h) h = '<div class="loading">' + esc(r.error) + '</div>';
-      document.getElementById('media').innerHTML = h;
-    }).getMedia(K, x['SLIP FILE'], x.EMAIL);
-  }
+    (x.NOTE ? '<div class="note">Note: ' + esc(x.NOTE) + '</div>' : '') +
+    '<label>Payee</label><input type="text" id="aka" value="' + esc(x.AKA || x.PAYEE) + '">' +
+    ((x.AKA || x.PAYEE) !== x.PAYEE ? '<div class="printed">As printed: ' + esc(x.PAYEE) + '</div>' : '') +
+    '<label>Account</label><select id="account"' + (noAcc ? ' class="empty"' : '') + '>' + opts + '</select>' +
+    '<div class="check"><input type="checkbox" id="always"><span>Always this account for this payee</span></div>' +
+    '<label>What it was for (optional)</label><input type="text" id="description">' +
+    (x.INVOICE === 'YES' ? '<div class="inv"><b>Invoice</b><div class="seg" id="inv">' +
+      '<button data-v="NOW" onclick="invoice(this)">Attach now</button>' +
+      '<button data-v="LATER" onclick="invoice(this)">Coming later</button>' +
+      '<button data-v="NONE" onclick="invoice(this)">No invoice</button></div></div>' : '') +
+    '<div class="row2">' + (src ? '<button onclick="see()">' + src + '</button>' : '') +
+      '<button onclick="addFile(\'' + esc(x.KEY) + '\')">Add file</button></div>' +
+    '<div class="added" id="added">' + (x._files ? x._files + ' file(s) added ✓' : '') + '</div>' +
+    '<div class="buttons"><button onclick="skip()">Skip</button><button class="primary" onclick="ok()">OK</button></div>' +
+    '</div>';
 }
 
-// Skip: the item goes to the end of the list (here at once, and in the sheet for next time)
-var skipped = 0;  // skips in a row: once every item has been skipped, say so instead of going round
+function invoice(b) {
+  [].forEach.call(b.parentNode.children, function (e) { e.classList.remove('on'); });
+  b.classList.add('on');
+  if (b.getAttribute('data-v') === 'NOW') addFile(data.items[i].KEY);
+}
+
+// Skip: nothing saved, the card goes to the end (here at once, and in the sheet for next time)
+var skipped = 0;
 function skip() {
   var x = data.items.splice(i, 1)[0];
   data.items.push(x);
@@ -163,28 +172,131 @@ function skip() {
   google.script.run.withFailureHandler(function () {}).skipItem(K, x.KEY);
   window.scrollTo(0, 0);
   if (skipped >= data.items.length) {
-    document.getElementById('main').innerHTML = '<div class="card empty">You skipped all ' + data.items.length +
-      ' item(s); they wait for later.<br><br><button onclick="skipped=0;i=0;show()">Show them again</button></div>';
+    $('main').innerHTML = laterCard() + '<div class="card empty">You skipped all ' + data.items.length + '. They stay here for later.' +
+      '<br><br><button onclick="skipped=0;i=0;show()">Show them again</button></div>';
     return;
   }
   show();
 }
 
-function save(done) {
-  var x = data.items[i], g = function (id) { var e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value.trim()) : ''; };
-  var a = {account: g('account'), always: g('always'), aka: g('aka'), description: g('description'), comment: g('comment'), done: done};
-  if (x.KIND === 'FILED' && a.account === x.ACCOUNT) a.account = '';  // unchanged: nothing to write
-  if (a.always && !a.account && !x.ACCOUNT) { alert('Pick the account first.'); return; }
-  if (a.always && !a.account) a.account = x.ACCOUNT;
-  if (!done && !a.account && !a.aka && !a.description && !a.comment) { skip(); return; }
-  var b = document.querySelectorAll('button'); b.forEach(function (e) { e.disabled = true; });
-  google.script.run.withSuccessHandler(function () {
-      data.items.splice(i, 1); skipped = 0; show(); window.scrollTo(0, 0);
-      var t = document.getElementById('toast'); t.textContent = x.KIND === 'FILED' || x.KIND === 'CHECK' ? 'Approved ✓' : done ? 'Done ✓ saved' : 'Saved ✓'; t.hidden = false;
-      setTimeout(function () { t.hidden = true; }, 2200);
-    })
-    .withFailureHandler(function (e) { alert(e.message); b.forEach(function (e2) { e2.disabled = false; }); })
-    .answer(K, x.KEY, a);
+// OK: what changed on the card is saved; nothing changed = seen
+function ok() {
+  var x = data.items[i], acc = $('account').value, aka = $('aka').value.trim(), on = document.querySelector('#inv .on');
+  var a = {account: acc && acc !== x.ACCOUNT ? acc : '', aka: aka && aka !== (x.AKA || x.PAYEE) ? aka : '',
+           always: $('always').checked, description: $('description').value.trim(), invoice: on ? on.getAttribute('data-v') : ''};
+  if (!acc) { alert('Pick the account first (or Skip).'); return; }
+  if (a.always && !a.account) a.account = acc;
+  if (a.invoice === 'NOW' && !x._files) { alert('Add the invoice file first, or pick Coming later.'); return; }
+  busy(true);
+  call('answer', [x.KEY, a], function () {
+    busy(false); data.items.splice(i, 1); skipped = 0; show(); window.scrollTo(0, 0);
+    toast(a.invoice === 'LATER' ? 'OK ✓ invoice on the Saturday list' : 'OK ✓');
+  });
+}
+
+// ---------- files ----------
+var pickFor = null;
+function addFile(key) { pickFor = key; $('picker').value = ''; $('picker').click(); }
+$('picker').addEventListener('change', function () {
+  var f = this.files[0];
+  if (!f || !pickFor) return;
+  var key = pickFor, cb = pickFor === '__cash__' ? cashFile : null;
+  readFile(f, function (b) {
+    if (cb) return cb(b);
+    busy(true); toast('Uploading…');
+    call('uploadFile', [key, b.name, b.mime, b.b64], function () {
+      busy(false);
+      var x = data.items.filter(function (y) { return y.KEY === key; })[0] || data.later.filter(function (y) { return y.KEY === key; })[0];
+      if (x) x._files = (x._files || 0) + 1;
+      if (later[key]) { later[key](); return; }
+      if ($('added')) $('added').textContent = x._files + ' file(s) added ✓';
+      toast('File added ✓');
+    });
+  });
+});
+
+// photos are made smaller on the phone first (faster to send); PDFs go as they are
+function readFile(f, done) {
+  var r = new FileReader();
+  if (f.type.indexOf('image/') === 0 && !/gif|svg/.test(f.type)) {
+    r.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var s = Math.min(1, 2200 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        done({name: f.name.replace(/\.[^.]+$/, '') + '.jpg', mime: 'image/jpeg', b64: c.toDataURL('image/jpeg', 0.85).split(',')[1]});
+      };
+      img.src = r.result;
+    };
+  } else {
+    r.onload = function () { done({name: f.name, mime: f.type || 'application/octet-stream', b64: r.result.split(',')[1]}); };
+  }
+  r.readAsDataURL(f);
+}
+
+// See slip / See email: full screen, closed with ✕
+function see() {
+  var x = data.items[i], v = $('viewer');
+  v.innerHTML = '<div class="bar"><button onclick="$(\'viewer\').hidden=true">✕ Close</button></div><div class="msg">Loading…</div>';
+  v.hidden = false;
+  google.script.run.withSuccessHandler(function (r) {
+    var h = '<div class="bar"><button onclick="$(\'viewer\').hidden=true">✕ Close</button></div>';
+    if (r.image) h += '<img src="' + r.image + '">';
+    if (r.email) h += '<div class="mail"><b>' + esc(r.email.subject) + '</b><br>' + esc(r.email.from) + ' · ' + esc(r.email.date) + '<pre>' + esc(r.email.body) + '</pre></div>';
+    if (!r.image && !r.email) h += '<div class="msg">' + esc(r.error || 'Nothing to show') + '</div>';
+    v.innerHTML = h;
+  }).withFailureHandler(function (e) { v.querySelector('.msg').textContent = e.message; }).getMedia(K, x['SLIP FILE'], x['SLIP FILE'] ? '' : x.EMAIL);
+}
+
+// ---------- the Saturday list: invoices put off with "Coming later" ----------
+var later = {};
+function laterCard() {
+  if (!data.later || !data.later.length) return '';
+  return '<div class="card"><span class="why">Saturday · ' + data.later.length + ' invoice(s) you said would come later</span>' +
+    '<div class="list">' + data.later.map(function (x) {
+      return '<div class="li"><div>' + esc(x.AKA || x.PAYEE) + '<small>' + esc(x.DATE.slice(0, 5)) + ' · ' + esc(x.BANK) + ' · ' + esc(x.AMOUNT) +
+        ' · ' + esc(x.ACCOUNT) + '</small></div><button onclick="laterAttach(\'' + esc(x.KEY) + '\')">Attach</button>' +
+        '<button onclick="laterNone(\'' + esc(x.KEY) + '\')">None</button></div>';
+    }).join('') + '</div><div class="buttons"><button onclick="closeLater()">Close until next Saturday</button></div></div>';
+}
+function dropLater(key) { data.later = data.later.filter(function (y) { return y.KEY !== key; }); show(); }
+function laterAttach(key) {
+  later[key] = function () { delete later[key]; call('laterAnswer', [key, 'NOW'], function () { busy(false); dropLater(key); toast('Invoice added ✓'); }); };
+  addFile(key);
+}
+function laterNone(key) { busy(true); call('laterAnswer', [key, 'NONE'], function () { busy(false); dropLater(key); toast('No invoice ✓'); }); }
+function closeLater() { busy(true); call('closeLater', [], function () { busy(false); data.later = []; show(); }); }
+
+// ---------- CASH IN ----------
+var cash = null;
+function cashForm() {
+  if (!data) return;
+  cash = {how: 'CASH', file: null};
+  var today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+  var opt = function (l) { return '<option value="">choose…</option>' + l.map(function (a) { return '<option>' + esc(a) + '</option>'; }).join(''); };
+  window.scrollTo(0, 0);
+  $('main').innerHTML = '<div class="card"><b>Cash in</b>' +
+    '<label>Date</label><input type="date" id="c_date" value="' + today + '">' +
+    '<label>Amount (THB)</label><input type="text" id="c_amount" inputmode="decimal" placeholder="0.00">' +
+    '<label>Received how</label><div class="seg" id="c_how">' +
+      '<button data-v="CASH" class="on" onclick="cashHow(this)">Cash in hand</button>' +
+      '<button data-v="SCB" onclick="cashHow(this)">Into SCB</button><button data-v="BBL" onclick="cashHow(this)">Into BBL</button></div>' +
+    '<label>From</label><select id="c_origin">' + opt(data.cashIn.origins) + '</select>' +
+    '<label>For</label><select id="c_account">' + opt(data.cashIn.accounts) + '</select>' +
+    '<label>Note (optional)</label><input type="text" id="c_note">' +
+    '<div class="row2"><button onclick="pickFor=\'__cash__\';$(\'picker\').value=\'\';$(\'picker\').click()">Add slip / photo</button></div>' +
+    '<div class="added" id="c_added"></div>' +
+    '<div class="buttons"><button onclick="show()">Cancel</button><button class="primary" onclick="cashSave()">Save</button></div></div>';
+}
+function cashHow(b) { [].forEach.call(b.parentNode.children, function (e) { e.classList.remove('on'); }); b.classList.add('on'); cash.how = b.getAttribute('data-v'); }
+function cashFile(b) { cash.file = b; $('c_added').textContent = 'Photo added ✓'; }
+function cashSave() {
+  var c = {date: $('c_date').value, amount: $('c_amount').value, how: cash.how, origin: $('c_origin').value,
+           account: $('c_account').value, note: $('c_note').value.trim(), file: cash.file};
+  if (!c.date || !(Number(String(c.amount).replace(/[, ]/g, '')) > 0) || !c.origin || !c.account) { alert('Date, amount, From and For are needed.'); return; }
+  busy(true); toast('Saving…');
+  call('cashIn', [c], function () { busy(false); show(); toast('Cash in saved ✓'); });
 }
 load();
 </script>
