@@ -138,7 +138,7 @@ function show() {
   m.innerHTML = h +
     '<div class="card">' +
     '<span class="why' + (noAcc ? ' need' : '') + '">' + esc(x.WHY) + '</span><span class="count">' + (i + 1) + ' of ' + data.items.length + '</span>' +
-    '<div class="amount">' + esc(x.AMOUNT) + ' THB</div>' +
+    '<div class="amount">' + (x.AMOUNT ? esc(x.AMOUNT) : '—') + ' THB</div>' +  // always there, even before the amount is known
     '<div class="when">' + esc(x.DATE) + (x.TIME ? ' · ' + esc(x.TIME) : '') + ' · ' + esc(x.BANK) + '</div>' +
     (x.NOTE ? '<div class="note">Note: ' + esc(x.NOTE) + '</div>' : '') +
     '<label>Payee</label><input type="text" id="aka" value="' + esc(x.AKA || x.PAYEE) + '">' +
@@ -255,7 +255,7 @@ function laterCard() {
   if (!data.later || !data.later.length) return '';
   return '<div class="card"><span class="why">Saturday · ' + data.later.length + ' invoice(s) you said would come later</span>' +
     '<div class="list">' + data.later.map(function (x) {
-      return '<div class="li"><div>' + esc(x.AKA || x.PAYEE) + '<small>' + esc(x.DATE.slice(0, 5)) + ' · ' + esc(x.BANK) + ' · ' + esc(x.AMOUNT) +
+      return '<div class="li"><div>' + esc(x.AKA || x.PAYEE) + '<small>' + esc(x.DATE.slice(0, 5)) + ' · ' + esc(x.BANK) + ' · ' + esc(x.AMOUNT || '—') +
         ' · ' + esc(x.ACCOUNT) + '</small></div><button onclick="laterAttach(\'' + esc(x.KEY) + '\')">Attach</button>' +
         '<button onclick="laterNone(\'' + esc(x.KEY) + '\')">None</button></div>';
     }).join('') + '</div><div class="buttons"><button onclick="closeLater()">Close until next Saturday</button></div></div>';
