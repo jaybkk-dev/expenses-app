@@ -115,7 +115,7 @@ function load() {
 
 function showStatus() {
   var s = data.status, el = $('status'), bits = [], bad = false;
-  if (s['LAST RUN END']) bits.push('Last run ' + s['LAST RUN END'].replace('T', ' ').slice(5) + (s['LAST RUN OK'] === 'NO' ? ' (with failures)' : ''));
+  if (s['LAST RUN END']) bits.push('Last run ' + s['LAST RUN END'].replace(/^\d{4}-(\d\d)-(\d\d)[T ]/, '$2/$1 ') + (s['LAST RUN OK'] === 'NO' ? ' (with failures)' : ''));
   if (s['LAST RUN OK'] === 'NO') bad = true;
   if (s['SIGN-IN EXPIRES']) {
     var left = (new Date(s['SIGN-IN EXPIRES'] + ':00+07:00') - new Date()) / 86400000;
@@ -309,11 +309,11 @@ var cash = null;
 function cashForm() {
   if (!data) return;
   cash = {how: 'CASH', file: null};
-  var today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+  var today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10).split('-').reverse().join('/');  // dd/mm/yyyy (Jay 18 Nov 2026: never the US format)
   var opt = function (l) { return '<option value="">choose…</option>' + l.map(function (a) { return '<option>' + esc(a) + '</option>'; }).join(''); };
   window.scrollTo(0, 0);
   $('main').innerHTML = '<div class="card"><b>Cash in</b>' +
-    '<label>Date</label><input type="date" id="c_date" value="' + today + '">' +
+    '<label>Date (dd/mm/yyyy)</label><input type="text" id="c_date" inputmode="numeric" placeholder="dd/mm/yyyy" value="' + today + '">' +
 
     '<label>Received how</label><div class="seg" id="c_how">' +
       '<button data-v="CASH" class="on" onclick="cashHow(this)">Cash in hand</button>' +
@@ -349,7 +349,10 @@ function cashTotal() {
 function cashHow(b) { [].forEach.call(b.parentNode.children, function (e) { e.classList.remove('on'); }); b.classList.add('on'); cash.how = b.getAttribute('data-v'); }
 function cashFile(b) { cash.file = b; $('c_added').textContent = 'Photo added ✓'; }
 function cashSave() {
-  var c = {date: $('c_date').value, parts: cashParts(), how: cash.how, origin: $('c_origin').value,
+  var m = $('c_date').value.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/);
+  var iso = m ? (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : '';
+  if (!m || Number(m[2]) > 12 || Number(m[1]) > 31) { alert('Date as dd/mm/yyyy, e.g. 17/11/2026.'); return; }
+  var c = {date: iso, parts: cashParts(), how: cash.how, origin: $('c_origin').value,
            note: $('c_note').value.trim(), file: cash.file};
   if (!c.date || !c.origin || c.parts.some(function (p) { return !(num(p.amount) > 0) || !p.account; })) {
     alert('Date, From, and an amount and For on every line are needed.'); return; }
