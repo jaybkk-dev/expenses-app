@@ -313,7 +313,9 @@ function cashForm() {
   var opt = function (l) { return '<option value="">choose…</option>' + l.map(function (a) { return '<option>' + esc(a) + '</option>'; }).join(''); };
   window.scrollTo(0, 0);
   $('main').innerHTML = '<div class="card"><b>Cash in</b>' +
-    '<label>Date (dd/mm/yyyy)</label><input type="text" id="c_date" inputmode="numeric" placeholder="dd/mm/yyyy" value="' + today + '">' +
+    '<label>Date</label><div class="part"><input type="text" id="c_date" inputmode="numeric" placeholder="dd/mm/yyyy" value="' + today + '">' +
+      '<button onclick="cashCal()" aria-label="Calendar">📅</button></div>' +
+    '<input type="date" id="c_cal" style="position:absolute;opacity:0;width:1px;height:1px" onchange="cashCalPicked(this)">' +
 
     '<label>Received how</label><div class="seg" id="c_how">' +
       '<button data-v="CASH" class="on" onclick="cashHow(this)">Cash in hand</button>' +
@@ -346,6 +348,13 @@ function cashTotal() {
   var p = cashParts(), t = p.reduce(function (s, x) { return s + num(x.amount); }, 0);
   $('c_total').textContent = p.length > 1 ? 'Total ' + t.toLocaleString('en-US', {minimumFractionDigits: 2}) + ' THB, ' + p.length + ' parts' : '';
 }
+// the phone's calendar (its pop-up follows the phone's language); the field always shows dd/mm/yyyy
+function cashCal() {
+  var c = $('c_cal'), m = $('c_date').value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) c.value = m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  try { c.showPicker(); } catch (e) { c.focus(); c.click(); }
+}
+function cashCalPicked(c) { if (c.value) $('c_date').value = c.value.split('-').reverse().join('/'); }
 function cashHow(b) { [].forEach.call(b.parentNode.children, function (e) { e.classList.remove('on'); }); b.classList.add('on'); cash.how = b.getAttribute('data-v'); }
 function cashFile(b) { cash.file = b; $('c_added').textContent = 'Photo added ✓'; }
 function cashSave() {
