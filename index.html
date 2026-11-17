@@ -58,6 +58,11 @@
   .viewer .mail { background:var(--card); color:var(--ink); margin:0 10px 20px; border-radius:10px; padding:14px; font-size:14px; }
   .viewer pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; margin:8px 0 0; }
   .viewer .msg { color:#fff; padding:20px; }
+  .part { display:flex; gap:8px; margin-top:8px; align-items:center; }
+  .part input, .part select { flex:1; min-width:0; }
+  .part button { flex:none; padding:8px 12px; font-size:14px; }
+  .left { font-size:13px; color:var(--muted); margin-top:6px; }
+  .left.bad { color:var(--warn); }
   .toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); z-index:20;
            background:var(--navy); color:var(--card); padding:10px 18px; border-radius:20px; font-weight:600; font-size:15px; }
 </style>
@@ -141,6 +146,7 @@ function show() {
     '<div class="amount">' + (x.AMOUNT ? esc(x.AMOUNT) : '—') + ' THB</div>' +  // always there, even before the amount is known
     '<div class="when">' + esc(x.DATE) + (x.TIME ? ' · ' + esc(x.TIME) : '') + ' · ' + esc(x.BANK) + '</div>' +
     (x.NOTE ? '<div class="note">Note: ' + esc(x.NOTE) + '</div>' : '') +
+    '<div id="split">' + splitHtml(x) + '</div>' +
     '<label>Payee</label><input type="text" id="aka" value="' + esc(x.AKA || x.PAYEE) + '">' +
     ((x.AKA || x.PAYEE) !== x.PAYEE ? '<div class="printed">As printed: ' + esc(x.PAYEE) + '</div>' : '') +
     '<label>Account</label><select id="account"' + (noAcc ? ' class="empty"' : '') + '>' + opts + '</select>' +
@@ -179,6 +185,30 @@ function skip() {
   show();
 }
 
+// ---------- split (Jay 18 Nov 2026): one payment, 2 or more amounts (an invoice and a delivery fee) ----------
+function num(s) { return Number(String(s || '').replace(/[, ]/g, '')) || 0; }
+function splitHtml(x) {
+  var parts = x._parts || (x.SPLIT ? x.SPLIT.split('|').map(function (p) { return p.trim(); }) : null);
+  if (!parts) return '<div class="row2"><button onclick="splitOpen()">Split the amount</button></div>';
+  return '<label>Split into</label>' + parts.map(function (p, n) {
+    return '<div class="part"><input type="text" inputmode="decimal" class="sp" value="' + esc(p) + '" oninput="splitLeft()">' +
+      (parts.length > 2 ? '<button onclick="splitDrop(' + n + ')">✕</button>' : '') + '</div>'; }).join('') +
+    '<div class="left" id="sp_left"></div>' +
+    '<div class="row2"><button onclick="splitAdd()">+ Part</button><button onclick="splitNone()">Not split</button></div>';
+}
+function splitVals() { return [].map.call(document.querySelectorAll('.sp'), function (e) { return e.value; }); }
+function splitRedraw() { $('split').innerHTML = splitHtml(data.items[i]); splitLeft(); }
+function splitOpen() { var x = data.items[i]; x._parts = [x.AMOUNT, '']; splitRedraw(); }
+function splitAdd() { var x = data.items[i]; x._parts = splitVals().concat(['']); splitRedraw(); }
+function splitDrop(n) { var x = data.items[i]; x._parts = splitVals(); x._parts.splice(n, 1); splitRedraw(); }
+function splitNone() { var x = data.items[i]; x._parts = null; x.SPLIT = ''; x._unsplit = true; splitRedraw(); }
+function splitLeft() {
+  var el = $('sp_left'); if (!el) return;
+  var x = data.items[i], d = num(x.AMOUNT) - splitVals().reduce(function (t, v) { return t + num(v); }, 0);
+  el.textContent = Math.abs(d) < 0.005 ? 'Adds up ✓' : (d > 0 ? d.toFixed(2) + ' left to split' : (-d).toFixed(2) + ' too much');
+  el.className = 'left' + (Math.abs(d) < 0.005 ? '' : ' bad');
+}
+
 // OK: what changed on the card is saved; nothing changed = seen
 function ok() {
   var x = data.items[i], acc = $('account').value, aka = $('aka').value.trim(), on = document.querySelector('#inv .on');
@@ -187,6 +217,12 @@ function ok() {
   if (!acc) { alert('Pick the account first (or Skip).'); return; }
   if (a.always && !a.account) a.account = acc;
   if (a.invoice === 'NOW' && !x._files) { alert('Add the invoice file first, or pick Coming later.'); return; }
+  if (document.querySelector('.sp')) {
+    var parts = splitVals().map(num).filter(function (v) { return v > 0; });
+    var sum = parts.reduce(function (t, v) { return t + v; }, 0);
+    if (parts.length < 2 || Math.abs(sum - num(x.AMOUNT)) > 0.005) { alert('The parts must add up to ' + x.AMOUNT + ' (or tap Not split).'); return; }
+    a.split = parts;
+  } else if (x._unsplit) a.split = [num(x.AMOUNT)];
   busy(true);
   call('answer', [x.KEY, a], function () {
     busy(false); data.items.splice(i, 1); skipped = 0; show(); window.scrollTo(0, 0);
@@ -278,23 +314,45 @@ function cashForm() {
   window.scrollTo(0, 0);
   $('main').innerHTML = '<div class="card"><b>Cash in</b>' +
     '<label>Date</label><input type="date" id="c_date" value="' + today + '">' +
-    '<label>Amount (THB)</label><input type="text" id="c_amount" inputmode="decimal" placeholder="0.00">' +
+
     '<label>Received how</label><div class="seg" id="c_how">' +
       '<button data-v="CASH" class="on" onclick="cashHow(this)">Cash in hand</button>' +
       '<button data-v="SCB" onclick="cashHow(this)">Into SCB</button><button data-v="BBL" onclick="cashHow(this)">Into BBL</button></div>' +
     '<label>From</label><select id="c_origin">' + opt(data.cashIn.origins) + '</select>' +
-    '<label>For</label><select id="c_account">' + opt(data.cashIn.accounts) + '</select>' +
+    '<label>Amount (THB) and For</label><div id="c_parts"></div>' +
+    '<div class="left" id="c_total"></div>' +
+    '<div class="row2"><button onclick="cashPart()">+ Split: another amount</button></div>' +
     '<label>Note (optional)</label><input type="text" id="c_note">' +
     '<div class="row2"><button onclick="pickFor=\'__cash__\';$(\'picker\').value=\'\';$(\'picker\').click()">Add slip / photo</button></div>' +
     '<div class="added" id="c_added"></div>' +
     '<div class="buttons"><button onclick="show()">Cancel</button><button class="primary" onclick="cashSave()">Save</button></div></div>';
+  cashPart([{amount: '', account: ''}]);
+}
+function cashParts() {
+  return [].map.call(document.querySelectorAll('#c_parts .part'), function (e) {
+    return {amount: e.querySelector('input').value, account: e.querySelector('select').value}; });
+}
+function cashPart(keep) {
+  var have = keep || cashParts(), opt = '<option value="">For…</option>' + data.cashIn.accounts.map(function (a) { return '<option>' + esc(a) + '</option>'; }).join('');
+  if (!keep) have.push({amount: '', account: ''});
+  $('c_parts').innerHTML = have.map(function (p, n) {
+    return '<div class="part"><input type="text" inputmode="decimal" placeholder="0.00" value="' + esc(p.amount) + '" oninput="cashTotal()">' +
+      '<select>' + opt.replace('<option>' + esc(p.account) + '</option>', '<option selected>' + esc(p.account) + '</option>') + '</select>' +
+      (have.length > 1 ? '<button onclick="cashDrop(' + n + ')">✕</button>' : '') + '</div>'; }).join('');
+  cashTotal();
+}
+function cashDrop(n) { var p = cashParts(); p.splice(n, 1); cashPart(p); }
+function cashTotal() {
+  var p = cashParts(), t = p.reduce(function (s, x) { return s + num(x.amount); }, 0);
+  $('c_total').textContent = p.length > 1 ? 'Total ' + t.toLocaleString('en-US', {minimumFractionDigits: 2}) + ' THB, ' + p.length + ' parts' : '';
 }
 function cashHow(b) { [].forEach.call(b.parentNode.children, function (e) { e.classList.remove('on'); }); b.classList.add('on'); cash.how = b.getAttribute('data-v'); }
 function cashFile(b) { cash.file = b; $('c_added').textContent = 'Photo added ✓'; }
 function cashSave() {
-  var c = {date: $('c_date').value, amount: $('c_amount').value, how: cash.how, origin: $('c_origin').value,
-           account: $('c_account').value, note: $('c_note').value.trim(), file: cash.file};
-  if (!c.date || !(Number(String(c.amount).replace(/[, ]/g, '')) > 0) || !c.origin || !c.account) { alert('Date, amount, From and For are needed.'); return; }
+  var c = {date: $('c_date').value, parts: cashParts(), how: cash.how, origin: $('c_origin').value,
+           note: $('c_note').value.trim(), file: cash.file};
+  if (!c.date || !c.origin || c.parts.some(function (p) { return !(num(p.amount) > 0) || !p.account; })) {
+    alert('Date, From, and an amount and For on every line are needed.'); return; }
   busy(true); toast('Saving…');
   call('cashIn', [c], function () { busy(false); show(); toast('Cash in saved ✓'); });
 }
