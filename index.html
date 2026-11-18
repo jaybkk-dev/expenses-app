@@ -151,7 +151,7 @@ function show() {
     ((x.AKA || x.PAYEE) !== x.PAYEE ? '<div class="printed">As printed: ' + esc(x.PAYEE) + '</div>' : '') +
     '<label>Account</label><select id="account"' + (noAcc ? ' class="empty"' : '') + '>' + opts + '</select>' +
     '<div class="check"><input type="checkbox" id="always"><span>Always this account for this payee</span></div>' +
-    '<label>What it was for (optional)</label><input type="text" id="description">' +
+    '<label>What it was for (optional)</label><input type="text" id="description" autocapitalize="characters" style="text-transform:uppercase">' +
     (x.INVOICE === 'YES' ? '<div class="inv"><b>Invoice</b><div class="seg" id="inv">' +
       '<button data-v="NOW" onclick="invoice(this)">Attach now</button>' +
       '<button data-v="LATER" onclick="invoice(this)">Coming later</button>' +
@@ -213,7 +213,7 @@ function splitLeft() {
 function ok() {
   var x = data.items[i], acc = $('account').value, aka = $('aka').value.trim(), on = document.querySelector('#inv .on');
   var a = {account: acc && acc !== x.ACCOUNT ? acc : '', aka: aka && aka !== (x.AKA || x.PAYEE) ? aka : '',
-           always: $('always').checked, description: $('description').value.trim(), invoice: on ? on.getAttribute('data-v') : ''};
+           always: $('always').checked, description: $('description').value.trim().toUpperCase(), invoice: on ? on.getAttribute('data-v') : ''};
   if (!acc) { alert('Pick the account first (or Skip).'); return; }
   if (a.always && !a.account) a.account = acc;
   if (a.invoice === 'NOW' && !x._files) { alert('Add the invoice file first, or pick Coming later.'); return; }
