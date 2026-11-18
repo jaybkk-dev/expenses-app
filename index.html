@@ -150,7 +150,8 @@ function show() {
     '<label>Payee</label><input type="text" id="aka" value="' + esc(x.AKA || x.PAYEE) + '">' +
     ((x.AKA || x.PAYEE) !== x.PAYEE ? '<div class="printed">As printed: ' + esc(x.PAYEE) + '</div>' : '') +
     '<label>Account</label><select id="account"' + (noAcc ? ' class="empty"' : '') + '>' + opts + '</select>' +
-    '<div class="check"><input type="checkbox" id="always"><span>Always this account for this payee</span></div>' +
+    (x.RULE ? '<div class="printed">Rule already set: always ' + esc(x.RULE) + ' for this payee</div><input type="checkbox" id="always" hidden>'
+            : '<div class="check"><input type="checkbox" id="always"><span>Make it the rule for this payee (no rule yet)</span></div>') +
     '<label>What it was for (optional)</label><input type="text" id="description" autocapitalize="characters" style="text-transform:uppercase">' +
     (x.INVOICE === 'YES' ? '<div class="inv"><b>Invoice</b><div class="seg" id="inv">' +
       '<button data-v="NOW" onclick="invoice(this)">Attach now</button>' +
