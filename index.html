@@ -46,6 +46,11 @@
   button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   button.cashin { flex:none; padding:9px 14px; font-size:15px; background:var(--ok); border-color:var(--ok); color:#fff; }
   button:disabled { opacity:.5; }
+  .hbtns { display:flex; flex-direction:column; gap:8px; flex:none; }
+  button.runbtn { flex:none; padding:9px 14px; font-size:15px; background:var(--card); border-color:var(--navy); color:var(--navy); }
+  .runline { margin:6px 16px 4px; max-width:528px; padding:10px 12px; border-radius:10px; background:var(--chip); color:var(--navy); font-size:14px; }
+  .runline.bad { color:var(--warn); }
+  .runline.ok { color:var(--ok); }
   .list .li { display:flex; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; }
   .list .li div { flex:1; min-width:0; }
   .list small { color:var(--muted); display:block; }
@@ -70,8 +75,10 @@
 <body>
 <header>
   <div><h1>Expenses</h1><div id="status" class="status">Loading…</div></div>
-  <button class="cashin" onclick="cashForm()">+ CASH IN</button>
+  <div class="hbtns"><button class="cashin" onclick="cashForm()">+ CASH IN</button>
+    <button class="runbtn" id="runbtn" onclick="runNow()">▶ RUN NOW</button></div>
 </header>
+<div id="runline" class="runline" hidden></div>
 <main id="main"></main>
 <div id="viewer" class="viewer" hidden></div>
 <input type="file" id="picker" accept="image/*,application/pdf" hidden>
@@ -113,6 +120,57 @@ function load() {
     .getData(K);
 }
 
+// ---------- Run now (Jay 21 Nov 2026: say what is happening, so he never has to wonder) ----------
+var runTimer = null, runAsked = false, runWasBusy = false;
+function dmy(s) {  // dd/MM/yyyy HH:mm (Bangkok)
+  var m = /^(\d\d)\/(\d\d)\/(\d{4}) (\d\d):(\d\d)/.exec(s || '');
+  return m ? new Date(m[3] + '-' + m[2] + '-' + m[1] + 'T' + m[4] + ':' + m[5] + ':00+07:00') : null;
+}
+function hm(s) { var d = dmy(s); if (!d) return ''; var t = (s || '').slice(11, 16), today = (new Date()).toDateString() === d.toDateString(); return today ? t : s.slice(0, 5) + ' ' + t; }
+function runState(r) {
+  var now = new Date(), req = r.REQUESTED || '', waiting = !!req && req !== (r.TAKEN || ''), seen = dmy(r['PC SEEN']);
+  var started = dmy(r.STARTED), running = r.STATE === 'RUNNING' && started && now - started < 3600000;
+  var exp = r['SIGN-IN EXPIRES'] ? new Date(r['SIGN-IN EXPIRES'] + ':00+07:00') : null;
+  var wrote = r['STATUS WRITTEN'] ? new Date(r['STATUS WRITTEN'] + ':00+07:00') : null;
+  var signedOut = exp && now > exp && (!wrote || wrote < exp) && (!seen || seen < exp);
+  var pcOff = !running && (!seen || now - seen > 6 * 60000);
+  if (signedOut) return {t: 'The PC\'s Google sign-in has ended, so no run can start. On the PC run: python -m importer.auth', c: 'bad', busy: false};
+  if (running) return {t: r.KIND === 'quick' ? 'Running since ' + hm(r.STARTED) + ' (about 6 min). What it finds will show here.'
+                                             : 'A run is in progress (started ' + hm(r.STARTED) + '), please wait.' + (waiting ? ' Yours starts right after it.' : ''),
+                       c: '', busy: true};
+  if (waiting) return pcOff ? {t: 'Your PC is not reachable at the moment' + (seen ? ' (last seen ' + hm(r['PC SEEN']) + ')' : '') + '. The run will start as soon as it is on again.', c: 'bad', busy: true}
+                            : {t: 'Requested at ' + hm(req) + '. Starting within a minute…', c: '', busy: true};
+  var ended = dmy(r.ENDED);
+  if (r.STATE === 'DONE' && ended && (runAsked || now - ended < 12 * 3600000))
+    return {t: (r.KIND === 'quick' ? 'Run finished ' : 'Last run finished ') + hm(r.ENDED) + (r.OK === 'NO' ? ' with failures' : '') + '. ' + (r.RESULT || ''),
+            c: r.OK === 'NO' ? 'bad' : 'ok', busy: false};
+  return null;
+}
+function showRun(r) {
+  if (!r) return;
+  var s = runState(r), el = $('runline');
+  el.hidden = !s;
+  if (s) { el.textContent = s.t; el.className = 'runline' + (s.c ? ' ' + s.c : ''); }
+  if (s && s.busy) { runWasBusy = true; if (!runTimer) runTimer = setInterval(pollRun, 15000); }
+  else {
+    if (runTimer) { clearInterval(runTimer); runTimer = null; }
+    if (runWasBusy) { runWasBusy = false; reloadAfterRun(); }  // new lines to look at may have come
+  }
+  return s;
+}
+function pollRun() { call('getRun', [], function (r) { if (data) data.run = r; showRun(r); }); }
+function reloadAfterRun() {
+  google.script.run.withSuccessHandler(function (d) { data = d; i = 0; showStatus(); show(); }).getData(K);
+}
+function runNow() {
+  var r = data && data.run, s = r && runState(r);
+  if (s && s.busy && r.STATE === 'RUNNING' && r.KIND === 'quick') { toast('A run is in progress, please wait'); return; }
+  if (s && s.busy && r.REQUESTED && r.REQUESTED !== (r.TAKEN || '')) { toast('Already requested at ' + hm(r.REQUESTED)); return; }
+  $('runbtn').disabled = true;
+  runAsked = true;
+  call('runNow', [], function (r2) { $('runbtn').disabled = false; data.run = r2; var s2 = showRun(r2); toast(s2 && s2.c === 'bad' ? 'Requested, but see the message' : 'Run requested'); });
+}
+
 function showStatus() {
   var s = data.status, el = $('status'), bits = [], bad = false;
   if (s['LAST RUN END']) bits.push('Last run ' + s['LAST RUN END'].replace(/^\d{4}-(\d\d)-(\d\d)[T ]/, '$2/$1 ') + (s['LAST RUN OK'] === 'NO' ? ' (with failures)' : ''));
@@ -125,6 +183,7 @@ function showStatus() {
   }
   el.textContent = bits.join(' · ');
   el.className = 'status' + (bad ? ' bad' : '');
+  showRun(data.run);
 }
 
 // ---------- the list ----------
