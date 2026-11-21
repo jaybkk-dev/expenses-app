@@ -117,10 +117,11 @@ function showStatus() {
   var s = data.status, el = $('status'), bits = [], bad = false;
   if (s['LAST RUN END']) bits.push('Last run ' + s['LAST RUN END'].replace(/^\d{4}-(\d\d)-(\d\d)[T ]/, '$2/$1 ') + (s['LAST RUN OK'] === 'NO' ? ' (with failures)' : ''));
   if (s['LAST RUN OK'] === 'NO') bad = true;
-  if (s['SIGN-IN EXPIRES']) {
-    var left = (new Date(s['SIGN-IN EXPIRES'] + ':00+07:00') - new Date()) / 86400000;
-    bits.push(left < 0 ? 'PC sign-in EXPIRED: python -m importer.auth' : 'sign-in ' + Math.floor(left) + ' more day(s)');
-    if (left < 1.5) bad = true;
+  // Jay 21 Nov 2026 (Google project in Production): no countdown; a line only when no run got through after the
+  // 7-day mark, i.e. the sign-in really ended
+  if (s['SIGN-IN EXPIRES'] && s['STATUS WRITTEN']) {
+    var exp = new Date(s['SIGN-IN EXPIRES'] + ':00+07:00'), wrote = new Date(s['STATUS WRITTEN'] + ':00+07:00');
+    if (new Date() - exp > 16 * 3600000 && wrote < exp) { bits.push('Google sign-in ended: on the PC run python -m importer.auth'); bad = true; }
   }
   el.textContent = bits.join(' · ');
   el.className = 'status' + (bad ? ' bad' : '');
